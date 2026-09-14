@@ -1,0 +1,25 @@
+server:
+  port: 8080
+
+spring:
+  application:
+    name: ai-platform
+  data:
+    redis:
+      host: localhost
+      port: 6379
+  kafka:
+    bootstrap-servers: localhost:9092
+
+platform:
+  cache:
+    ttl-seconds: 300
+    embedding-ttl: 600
+  gateway:
+    rate-limit:
+      global: 1000
+      per-tenant: 100
+  prompt:
+    injection-check-enabled: true
+  pii:
+    enabled: true
