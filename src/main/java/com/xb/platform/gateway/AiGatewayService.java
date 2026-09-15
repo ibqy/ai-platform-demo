@@ -4,6 +4,7 @@ import com.xb.platform.model.*;
 import com.xb.platform.tenant.*;
 import com.xb.platform.cache.LlmCache;
 import com.xb.platform.prompt.PromptRenderer;
+import org.springframework.ai.chat.client.ChatClient;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
@@ -13,28 +14,45 @@ import java.util.Map;
 @Service
 public class AiGatewayService {
 
+    private final GatewayAuthFilter authFilter;
+    private final GatewayRateLimiter rateLimiter;
+    private final ContentSafetyFilter safetyFilter;
+    private final PiiMasker piiMasker;
+    private final LlmCache cache;
+    private final ModelRegistry registry;
+    private final ModelRouter router;
+    private final ModelQuota modelQuota;
+    private final TenantRegistry tenantRegistry;
+    private final TenantQuotaManager quotaManager;
+    private final PromptRenderer promptRenderer;
+    private final ChatClient.Builder chatClientBuilder;
+
     @Autowired
-    private GatewayAuthFilter authFilter;
-    @Autowired
-    private GatewayRateLimiter rateLimiter;
-    @Autowired
-    private ContentSafetyFilter safetyFilter;
-    @Autowired
-    private PiiMasker piiMasker;
-    @Autowired
-    private LlmCache cache;
-    @Autowired
-    private ModelRegistry registry;
-    @Autowired
-    private ModelRouter router;
-    @Autowired
-    private ModelQuota modelQuota;
-    @Autowired
-    private TenantRegistry tenantRegistry;
-    @Autowired
-    private TenantQuotaManager quotaManager;
-    @Autowired
-    private PromptRenderer promptRenderer;
+    public AiGatewayService(GatewayAuthFilter authFilter,
+                            GatewayRateLimiter rateLimiter,
+                            ContentSafetyFilter safetyFilter,
+                            PiiMasker piiMasker,
+                            LlmCache cache,
+                            ModelRegistry registry,
+                            ModelRouter router,
+                            ModelQuota modelQuota,
+                            TenantRegistry tenantRegistry,
+                            TenantQuotaManager quotaManager,
+                            PromptRenderer promptRenderer,
+                            ChatClient.Builder chatClientBuilder) {
+        this.authFilter = authFilter;
+        this.rateLimiter = rateLimiter;
+        this.safetyFilter = safetyFilter;
+        this.piiMasker = piiMasker;
+        this.cache = cache;
+        this.registry = registry;
+        this.router = router;
+        this.modelQuota = modelQuota;
+        this.tenantRegistry = tenantRegistry;
+        this.quotaManager = quotaManager;
+        this.promptRenderer = promptRenderer;
+        this.chatClientBuilder = chatClientBuilder;
+    }
 
     public static class AiGatewayRequest {
         public String token;
@@ -140,10 +158,17 @@ public class AiGatewayService {
             }
         }
 
-        // 11. 模拟模型调用
-        String result = "模拟AI响应: " + maskedQuery;
-        if (renderedPrompt != null) {
-            result = "模拟AI响应(模板:" + request.templateId + "): " + maskedQuery;
+        // 11. LLM 调用
+        ChatClient chatClient = chatClientBuilder.build();
+        String userMessage = renderedPrompt != null ? renderedPrompt : maskedQuery;
+        String result;
+        try {
+            result = chatClient.prompt()
+                    .user(userMessage)
+                    .call()
+                    .content();
+        } catch (Exception e) {
+            return AiGatewayResponse.error("llm_invoke_error");
         }
 
         // 12. 输出过滤
