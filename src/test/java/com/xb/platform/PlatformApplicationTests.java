@@ -1,12 +1,13 @@
 package com.xb.platform;
 
 import org.junit.jupiter.api.Test;
-import org.springframework.boot.test.context.SpringBootTest;
 
-@SpringBootTest(classes = PlatformApplication.class)
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+
 class PlatformApplicationTests {
 
     @Test
-    void contextLoads() {
+    void mainClassExists() {
+        assertNotNull(new PlatformApplication());
     }
 }

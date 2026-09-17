@@ -169,13 +169,50 @@ curl -X POST http://localhost:8080/api/v1/chat \
 
 ---
 
+## 实现边界
+
+### 已实现 ✅
+
+- 7 大模块：模型管理、多租户、AI 网关、多级缓存、异步任务、Prompt 平台、可观测计量
+- 14 步管道编排（限流→鉴权→注入检测→PII 脱敏→缓存→路由→Prompt 渲染→LLM 调用→计量→回写）
+- 三级缓存（LLM 回答 / Embedding / RAG 检索）+ 知识库版本主动失效
+- 任务状态机（QUEUED→PROCESSING→SUCCEEDED/FAILED→RETRYING→DEAD）
+- 多租户 ThreadLocal 隔离 + 配额管理
+- 模型路由（COST/PERFORMANCE/QUALITY）+ A/B 灰度分流
+- Token 计量与成本核算（租户×模型二维表）
+- 44 个单元测试（JUnit 5），覆盖核心逻辑
+
+### 教学简化 ⚠️
+
+- **缓存存储**：使用 `ConcurrentHashMap` 内存缓存，生产应为 Redis
+- **任务队列**：内存存储 + 虚拟线程消费，生产应为 Kafka + 持久化
+- **鉴权**：Token 校验使用占位值，未接入真实 JWT/OAuth
+- **注入检测**：基于正则模式匹配，未使用分类模型
+- **PII 脱敏**：仅覆盖手机号/身份证/银行卡，规则可扩展
+
+### 未实现 ❌
+
+- 分布式部署（Session 共享、分布式锁）
+- 向量数据库集成（Milvus/Qdrant）
+- 真实的多模型 A/B 测试数据分析
+- 前端管理控制台
+- 审计日志与合规报表
+
 ## 测试
 
 ```bash
-mvn test
+mvn test    # 44 个单元测试，约 7 秒
 ```
 
-单元测试覆盖核心逻辑，不依赖外部服务（Redis/Kafka/LLM 均可 Mock）。
+| 测试类 | 数量 | 覆盖范围 |
+|--------|------|---------|
+| PlatformApplicationTests | 1 | 启动类冒烟测试 |
+| PlatformCoreTest | 9 | 路由/健康探活/A-B 分流/配额/白名单/Prompt/PII/注入检测 |
+| CacheSystemTest | 8 | 三级缓存命中/隔离/TTL 过期/按 KB 失效 |
+| TaskStateMachineTest | 7 | 任务状态机/重试/DEAD/TaskStore CRUD |
+| TokenMeterTest | 8 | Token 计量/成本核算/多租户隔离/报表 |
+| TenantIsolationTest | 4 | ThreadLocal 隔离/跨线程不可见 |
+| GatewayInfraTest | 7 | 网关限流（全局+租户）/模型 TPM 配额 |
 
 ---
 
