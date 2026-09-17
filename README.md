@@ -26,7 +26,8 @@
 ai-platform-demo/
 ├── model/        模型管理层 — 注册、探活、路由、A/B、TPM配额
 ├── tenant/       多租户 — 行级隔离、配额、白名单、熔断
-├── gateway/      AI 网关 — 管道编排、限流、鉴权、注入检测、PII、LLM调用
+├── gateway/      AI 网关 — 管道编排、限流、鉴权、注入检测、PII、LLM调用、SSE流式、全局异常处理
+├── functioncall/ Function Calling — 工具定义、工具注册中心、OpenAI 格式输出
 ├── cache/        多级缓存 — LLM回答、Embedding、RAG检索
 ├── task/         异步任务 — 文档解析、批量向量化、状态机+重试
 ├── prompt/       Prompt平台 — 模板版本管理、灰度发布、参数校验
@@ -173,14 +174,18 @@ curl -X POST http://localhost:8080/api/v1/chat \
 
 ### 已实现 ✅
 
-- 7 大模块：模型管理、多租户、AI 网关、多级缓存、异步任务、Prompt 平台、可观测计量
+- 8 大模块：模型管理、多租户、AI 网关、Function Calling、多级缓存、异步任务、Prompt 平台、可观测计量
 - 14 步管道编排（限流→鉴权→注入检测→PII 脱敏→缓存→路由→Prompt 渲染→LLM 调用→计量→回写）
+- SSE 流式输出（`/api/ai/chat/stream`）—— 逐 Token 推送，虚拟线程异步执行
+- 全局异常处理器 —— 错误码→HTTP 状态码映射 + correlationId 链路追踪
+- Jakarta Bean Validation —— `@Valid` + `@NotBlank` 请求参数校验
+- Function Calling —— 工具定义（JSON Schema）+ 工具注册中心 + OpenAI 格式输出
 - 三级缓存（LLM 回答 / Embedding / RAG 检索）+ 知识库版本主动失效
 - 任务状态机（QUEUED→PROCESSING→SUCCEEDED/FAILED→RETRYING→DEAD）
 - 多租户 ThreadLocal 隔离 + 配额管理
 - 模型路由（COST/PERFORMANCE/QUALITY）+ A/B 灰度分流
 - Token 计量与成本核算（租户×模型二维表）
-- 44 个单元测试（JUnit 5），覆盖核心逻辑
+- 64 个单元测试（JUnit 5），覆盖核心逻辑
 
 ### 教学简化 ⚠️
 
@@ -201,7 +206,7 @@ curl -X POST http://localhost:8080/api/v1/chat \
 ## 测试
 
 ```bash
-mvn test    # 44 个单元测试，约 7 秒
+mvn test    # 64 个单元测试，约 25 秒
 ```
 
 | 测试类 | 数量 | 覆盖范围 |
@@ -213,6 +218,9 @@ mvn test    # 44 个单元测试，约 7 秒
 | TokenMeterTest | 8 | Token 计量/成本核算/多租户隔离/报表 |
 | TenantIsolationTest | 4 | ThreadLocal 隔离/跨线程不可见 |
 | GatewayInfraTest | 7 | 网关限流（全局+租户）/模型 TPM 配额 |
+| GlobalExceptionHandlerTest | 9 | 错误码→HTTP 映射/GatewayException/错误响应格式 |
+| FunctionCallTest | 7 | 工具定义/OpenAI 格式/注册中心/按类别查询/不可变列表 |
+| StreamingTest | 4 | SSE 流式 chunk 推送/计量/注入拦截/鉴权拦截 |
 
 ---
 
