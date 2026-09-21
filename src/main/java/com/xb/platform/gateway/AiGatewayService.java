@@ -142,16 +142,7 @@ public class AiGatewayService {
         // 5. PII脱敏
         String maskedQuery = piiMasker.mask(request.query);
 
-        // 6. 缓存查询
-        if (request.modelId != null && request.kbVersion != null) {
-            String cached = cache.get(maskedQuery, request.modelId, request.kbVersion);
-            if (cached != null) {
-                quotaManager.recordUsage(tenantId, 0, 0);
-                return AiGatewayResponse.ok(cached, request.modelId, 0, true);
-            }
-        }
-
-        // 7. 模型路由
+        // 6. 模型路由（缓存前完成路由与鉴权，防止缓存绕过权限）
         Tenant tenant = tenantRegistry.get(tenantId);
         List<ModelMeta> candidates = registry.listByType(ModelType.CHAT);
         ModelRouter.RouteRequest routeReq = new ModelRouter.RouteRequest(
@@ -163,11 +154,20 @@ public class AiGatewayService {
         }
         String selectedModelId = routeResult.getModelId();
 
-        // 8. 租户模型白名单
+        // 7. 租户模型白名单
         if (tenant != null && tenant.getModelWhitelist() != null
                 && !tenant.getModelWhitelist().isEmpty()
                 && !tenant.getModelWhitelist().contains(selectedModelId)) {
             return AiGatewayResponse.error("model_not_allowed");
+        }
+
+        // 8. 缓存查询（在鉴权与白名单之后，携带 tenantId 隔离租户）
+        if (request.modelId != null && request.kbVersion != null) {
+            String cached = cache.get(tenantId, maskedQuery, request.modelId, request.kbVersion);
+            if (cached != null) {
+                quotaManager.recordUsage(tenantId, 0, 0);
+                return AiGatewayResponse.ok(cached, request.modelId, 0, true);
+            }
         }
 
         // 9. 模型TPM
@@ -208,7 +208,7 @@ public class AiGatewayService {
 
         // 14. 回写缓存
         if (request.modelId != null && request.kbVersion != null) {
-            cache.put(maskedQuery, request.modelId, request.kbVersion, result);
+            cache.put(tenantId, maskedQuery, request.modelId, request.kbVersion, result);
         }
 
         return AiGatewayResponse.ok(result, selectedModelId, inTokens + outTokens, false);

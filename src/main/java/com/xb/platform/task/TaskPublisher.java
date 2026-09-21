@@ -19,6 +19,14 @@ public class TaskPublisher {
         return task.getTaskId();
     }
 
+    /**
+     * 将已存在的任务重新放回队列（保留原 UUID 与 retryCount）。
+     * 用于失败重试场景，避免 publish 创建新任务导致原任务永远 RETRYING。
+     */
+    public void requeue(AsyncTask task) {
+        queue.add(task);
+    }
+
     public AsyncTask poll() {
         return queue.poll();
     }

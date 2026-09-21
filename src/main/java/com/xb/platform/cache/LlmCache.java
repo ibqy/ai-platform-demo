@@ -25,12 +25,12 @@ public class LlmCache {
         }
     }
 
-    private String buildKey(String query, String modelId, String kbVersion) {
-        return query + "|" + modelId + "|" + kbVersion;
+    private String buildKey(String tenantId, String query, String modelId, String kbVersion) {
+        return tenantId + "|" + query + "|" + modelId + "|" + kbVersion;
     }
 
-    public String get(String query, String modelId, String kbVersion) {
-        String key = buildKey(query, modelId, kbVersion);
+    public String get(String tenantId, String query, String modelId, String kbVersion) {
+        String key = buildKey(tenantId, query, modelId, kbVersion);
         CacheEntry entry = cache.get(key);
         if (entry == null) return null;
         if (System.currentTimeMillis() - entry.cachedAtEpochMs > ttlSeconds * 1000L) {
@@ -40,8 +40,8 @@ public class LlmCache {
         return entry.response;
     }
 
-    public void put(String query, String modelId, String kbVersion, String response) {
-        String key = buildKey(query, modelId, kbVersion);
+    public void put(String tenantId, String query, String modelId, String kbVersion, String response) {
+        String key = buildKey(tenantId, query, modelId, kbVersion);
         cache.put(key, new CacheEntry(response, System.currentTimeMillis()));
     }
 

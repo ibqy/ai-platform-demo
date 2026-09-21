@@ -62,7 +62,7 @@ public class TaskConsumer {
 
             if (task.getRetryCount() < task.getMaxRetries()) {
                 task.setStatus(TaskStatus.RETRYING);
-                publisher.publish(task.getType(), task.getPayload(), task.getMaxRetries());
+                publisher.requeue(task);
             } else {
                 task.setStatus(TaskStatus.DEAD);
             }

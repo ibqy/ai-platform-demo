@@ -14,7 +14,7 @@ import static org.junit.jupiter.api.Assertions.*;
  * 三级缓存系统测试
  *
  * 心得：缓存设计的核心是 Key 粒度 + TTL + 主动失效。
- * LlmCache 用 query|modelId|kbVersion 做 Key，保证同一知识库版本下相同查询命中缓存；
+ * LlmCache 用 tenantId|query|modelId|kbVersion 做 Key，保证租户隔离与同一知识库版本下相同查询命中缓存；
  * 知识库更新时通过 evictByKb 按后缀批量清除，避免脏读。
  */
 class CacheSystemTest {
@@ -29,38 +29,40 @@ class CacheSystemTest {
     void testLlmCacheHitAndMiss() throws Exception {
         LlmCache cache = new LlmCache();
         setTtl(cache, 300);
-        assertNull(cache.get("什么是RAG", "gpt-4o", "v1"));
+        assertNull(cache.get("t1", "什么是RAG", "gpt-4o", "v1"));
 
-        cache.put("什么是RAG", "gpt-4o", "v1", "RAG是检索增强生成");
-        assertEquals("RAG是检索增强生成", cache.get("什么是RAG", "gpt-4o", "v1"));
+        cache.put("t1", "什么是RAG", "gpt-4o", "v1", "RAG是检索增强生成");
+        assertEquals("RAG是检索增强生成", cache.get("t1", "什么是RAG", "gpt-4o", "v1"));
     }
 
     @Test
     void testLlmCacheKeyIsolation() throws Exception {
         LlmCache cache = new LlmCache();
         setTtl(cache, 300);
-        cache.put("你好", "gpt-4o", "v1", "回答A");
-        cache.put("你好", "deepseek", "v1", "回答B");
-        cache.put("你好", "gpt-4o", "v2", "回答C");
+        cache.put("t1", "你好", "gpt-4o", "v1", "回答A");
+        cache.put("t1", "你好", "deepseek", "v1", "回答B");
+        cache.put("t1", "你好", "gpt-4o", "v2", "回答C");
+        cache.put("t2", "你好", "gpt-4o", "v1", "回答D");
 
-        assertEquals("回答A", cache.get("你好", "gpt-4o", "v1"));
-        assertEquals("回答B", cache.get("你好", "deepseek", "v1"));
-        assertEquals("回答C", cache.get("你好", "gpt-4o", "v2"));
+        assertEquals("回答A", cache.get("t1", "你好", "gpt-4o", "v1"));
+        assertEquals("回答B", cache.get("t1", "你好", "deepseek", "v1"));
+        assertEquals("回答C", cache.get("t1", "你好", "gpt-4o", "v2"));
+        assertEquals("回答D", cache.get("t2", "你好", "gpt-4o", "v1"));
     }
 
     @Test
     void testLlmCacheEvictByKb() throws Exception {
         LlmCache cache = new LlmCache();
         setTtl(cache, 300);
-        cache.put("Q1", "gpt-4o", "kb-v1", "A1");
-        cache.put("Q2", "gpt-4o", "kb-v1", "A2");
-        cache.put("Q3", "gpt-4o", "kb-v2", "A3");
+        cache.put("t1", "Q1", "gpt-4o", "kb-v1", "A1");
+        cache.put("t1", "Q2", "gpt-4o", "kb-v1", "A2");
+        cache.put("t1", "Q3", "gpt-4o", "kb-v2", "A3");
 
         cache.evictByKb("kb-v1");
 
-        assertNull(cache.get("Q1", "gpt-4o", "kb-v1"));
-        assertNull(cache.get("Q2", "gpt-4o", "kb-v1"));
-        assertEquals("A3", cache.get("Q3", "gpt-4o", "kb-v2"));
+        assertNull(cache.get("t1", "Q1", "gpt-4o", "kb-v1"));
+        assertNull(cache.get("t1", "Q2", "gpt-4o", "kb-v1"));
+        assertEquals("A3", cache.get("t1", "Q3", "gpt-4o", "kb-v2"));
     }
 
     @Test
@@ -68,9 +70,9 @@ class CacheSystemTest {
         LlmCache cache = new LlmCache();
         setTtl(cache, 0);
 
-        cache.put("Q", "m", "v", "A");
+        cache.put("t1", "Q", "m", "v", "A");
         Thread.sleep(10);
-        assertNull(cache.get("Q", "m", "v"), "TTL=0 时缓存应立即过期");
+        assertNull(cache.get("t1", "Q", "m", "v"), "TTL=0 时缓存应立即过期");
     }
 
     @Test
