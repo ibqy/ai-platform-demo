@@ -2,6 +2,15 @@ package com.xb.platform.task;
 
 import java.util.UUID;
 
+/**
+ * AsyncTask - 异步任务实体
+ *
+ * 演示 AI 平台异步任务的状态机模型：QUEUED → PROCESSING → SUCCEEDED/FAILED，
+ * 失败后可进入 RETRYING 状态重新排队，超过最大重试次数则进入 DEAD 状态。
+ * 携带进度百分比和错误信息，便于前端轮询展示任务进展。
+ *
+ * @author ibqy
+ */
 public class AsyncTask {
 
     public enum TaskStatus {

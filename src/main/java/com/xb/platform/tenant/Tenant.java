@@ -2,6 +2,15 @@ package com.xb.platform.tenant;
 
 import java.util.Set;
 
+/**
+ * Tenant - 租户实体
+ *
+ * 描述 AI 平台中一个租户的完整信息：租户 ID、名称、状态、过期时间、
+ * 模型白名单。模型白名单用于控制租户可访问的模型范围，
+ * 是多租户 AI 平台实现差异化服务的关键配置。
+ *
+ * @author ibqy
+ */
 public class Tenant {
 
     private String tenantId;

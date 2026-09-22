@@ -20,6 +20,8 @@ import java.util.function.Consumer;
  * <p>作者：xb | 日期：2026-09</p>
  *
  * <p>管道顺序从便宜到贵排列：被挡掉的请求不消耗任何模型调用费用。</p>
+ *
+ * @author ibqy
  */
 @Service
 public class AiGatewayService {

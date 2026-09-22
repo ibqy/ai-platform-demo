@@ -7,6 +7,15 @@ import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicLong;
 
+/**
+ * PlatformMetrics - 平台指标收集器
+ *
+ * 演示 AI 平台的多维度指标采集：按租户、端点、模型三个维度分别记录
+ * 请求量、成功率、延迟分布。使用 CAS（compareAndSet）无锁更新最小/最大延迟，
+ * 兼顾并发安全与性能。这些指标是告警规则和运维可视化的数据源。
+ *
+ * @author ibqy
+ */
 @Component
 public class PlatformMetrics {
 
@@ -23,12 +32,30 @@ public class PlatformMetrics {
     private final ConcurrentHashMap<String, MetricEntry> endpointMetrics = new ConcurrentHashMap<>();
     private final ConcurrentHashMap<String, MetricEntry> modelMetrics = new ConcurrentHashMap<>();
 
+    /**
+     * 记录一次请求的指标数据（按租户、端点、模型三维度）
+     * @param tenantId 租户 ID
+     * @param endpoint 请求端点
+     * @param modelId 使用的模型 ID
+     * @param success 请求是否成功
+     * @param latencyMs 请求耗时（毫秒）
+     */
     public void record(String tenantId, String endpoint, String modelId, boolean success, long latencyMs) {
         updateEntry(tenantMetrics, tenantId, success, latencyMs);
         updateEntry(endpointMetrics, endpoint, success, latencyMs);
         updateEntry(modelMetrics, modelId, success, latencyMs);
     }
 
+    /**
+     * 记录一次请求的指标数据（含 Token 用量）
+     * @param tenantId 租户 ID
+     * @param endpoint 请求端点
+     * @param modelId 模型 ID
+     * @param success 是否成功
+     * @param latencyMs 耗时（毫秒）
+     * @param inputTokens 输入 Token 数
+     * @param outputTokens 输出 Token 数
+     */
     public void record(String tenantId, String endpoint, String modelId, boolean success, long latencyMs,
                        int inputTokens, int outputTokens) {
         record(tenantId, endpoint, modelId, success, latencyMs);
@@ -59,14 +86,29 @@ public class PlatformMetrics {
         }
     }
 
+    /**
+     * 获取指定租户的汇总指标
+     * @param tenantId 租户 ID
+     * @return 包含请求量、成功率、延迟分布的指标 Map
+     */
     public Map<String, Object> getTenantMetrics(String tenantId) {
         return toMetricMap(tenantMetrics.get(tenantId));
     }
 
+    /**
+     * 获取指定端点的汇总指标
+     * @param endpoint 端点路径
+     * @return 指标 Map
+     */
     public Map<String, Object> getEndpointMetrics(String endpoint) {
         return toMetricMap(endpointMetrics.get(endpoint));
     }
 
+    /**
+     * 获取指定模型的汇总指标（供告警规则使用）
+     * @param modelId 模型 ID
+     * @return 指标 Map
+     */
     public Map<String, Object> getModelMetrics(String modelId) {
         return toMetricMap(modelMetrics.get(modelId));
     }

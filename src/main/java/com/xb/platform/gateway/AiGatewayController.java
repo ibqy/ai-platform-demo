@@ -25,6 +25,8 @@ import java.util.concurrent.Executors;
  *     <li>{@code @Valid} 触发 Jakarta Bean Validation，校验失败由 {@link GlobalExceptionHandler} 处理</li>
  *     <li>SSE 流式输出是生产 AI 网关的标配——用户无需等待完整回答，体验接近 ChatGPT</li>
  * </ul>
+ *
+ * @author ibqy
  */
 @RestController
 @RequestMapping("/api/ai")

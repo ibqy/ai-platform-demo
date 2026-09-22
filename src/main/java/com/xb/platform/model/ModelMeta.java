@@ -3,6 +3,15 @@ package com.xb.platform.model;
 import java.util.HashSet;
 import java.util.Set;
 
+/**
+ * ModelMeta - 模型元数据实体
+ *
+ * 描述一个 AI 模型的完整配置信息：模型 ID、类型、厂商、端点地址、
+ * API 密钥、上下文窗口大小、单价、最大并发数等。
+ * 是模型注册、路由、配额管理的基础数据结构。
+ *
+ * @author ibqy
+ */
 public class ModelMeta {
 
     private String modelId;

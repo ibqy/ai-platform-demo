@@ -22,6 +22,8 @@ import java.util.Map;
  *     <li>网关/客户端执行工具，将结果作为 tool message 回传给 LLM</li>
  *     <li>LLM 基于工具结果生成最终回答</li>
  * </ol>
+ *
+ * @author ibqy
  */
 public record ToolDefinition(
         String name,

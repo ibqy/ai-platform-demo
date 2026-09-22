@@ -10,6 +10,15 @@ import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicLong;
 
+/**
+ * TokenMeter - Token 计量与成本核算器
+ *
+ * 演示 AI 平台的成本控制中心：每次 LLM 调用都按模型单价记账，
+ * 以租户 x 模型为维度记录输入/输出 Token 数及费用。
+ * 用 AtomicLong 保证并发安全，支持生成租户级别的详细费用报告。
+ *
+ * @author ibqy
+ */
 @Component
 public class TokenMeter {
 
@@ -24,6 +33,13 @@ public class TokenMeter {
 
     private final ConcurrentHashMap<String, ConcurrentHashMap<String, Usage>> meter = new ConcurrentHashMap<>();
 
+    /**
+     * 记录一次 LLM 调用的 Token 用量及费用
+     * @param tenantId 租户 ID
+     * @param modelId 模型 ID
+     * @param inputTokens 输入 Token 数
+     * @param outputTokens 输出 Token 数
+     */
     public void record(String tenantId, String modelId, int inputTokens, int outputTokens) {
         Usage u = meter.computeIfAbsent(tenantId, k -> new ConcurrentHashMap<>())
                 .computeIfAbsent(modelId, k -> new Usage());
@@ -37,6 +53,12 @@ public class TokenMeter {
         }
     }
 
+    /**
+     * 查询指定租户在某模型上的累计费用
+     * @param tenantId 租户 ID
+     * @param modelId 模型 ID
+     * @return 累计费用（单位：元）
+     */
     public double getCost(String tenantId, String modelId) {
         ConcurrentHashMap<String, Usage> tenantUsage = meter.get(tenantId);
         if (tenantUsage == null) return 0.0;
@@ -44,18 +66,33 @@ public class TokenMeter {
         return u != null ? u.costMicro.get() / 10000.0 : 0.0;
     }
 
+    /**
+     * 查询指定租户的总输入 Token 数（跨模型汇总）
+     * @param tenantId 租户 ID
+     * @return 总输入 Token 数
+     */
     public long getTotalInputTokens(String tenantId) {
         ConcurrentHashMap<String, Usage> tenantUsage = meter.get(tenantId);
         if (tenantUsage == null) return 0;
         return tenantUsage.values().stream().mapToLong(u -> u.inputTokens.get()).sum();
     }
 
+    /**
+     * 查询指定租户的总输出 Token 数（跨模型汇总）
+     * @param tenantId 租户 ID
+     * @return 总输出 Token 数
+     */
     public long getTotalOutputTokens(String tenantId) {
         ConcurrentHashMap<String, Usage> tenantUsage = meter.get(tenantId);
         if (tenantUsage == null) return 0;
         return tenantUsage.values().stream().mapToLong(u -> u.outputTokens.get()).sum();
     }
 
+    /**
+     * 生成指定租户的详细费用报告（按模型分组 + 汇总）
+     * @param tenantId 租户 ID
+     * @return 包含各模型明细和汇总的 Map
+     */
     public Map<String, Object> getTenantReport(String tenantId) {
         Map<String, Object> report = new HashMap<>();
         ConcurrentHashMap<String, Usage> tenantUsage = meter.get(tenantId);

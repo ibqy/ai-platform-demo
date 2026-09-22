@@ -6,12 +6,28 @@ import org.springframework.stereotype.Component;
 
 import java.util.List;
 
+/**
+ * PromptInitializer - Prompt 模板初始化器
+ *
+ * 演示 AI 平台启动时预置常用 Prompt 模板：RAG 问答、Agent 规划、
+ * 文本摘要、自我反思。这些模板是 Prompt 工程的基础组件，
+ * 支持通过模板引擎渲染，实现 Prompt 的版本化管理与灰度发布。
+ *
+ * @author ibqy
+ */
 @Component
 public class PromptInitializer {
 
     @Autowired
     private PromptTemplateStore store;
 
+    /**
+     * 启动时预置常用 Prompt 模板到模板仓库。
+     *
+     * <p>通过 @PostConstruct 在容器就绪后自动执行，
+     * 预置 RAG 问答、Agent 规划、摘要、自我反思等模板，
+     * 供后续 Prompt 渲染和版本管理使用。</p>
+     */
     @PostConstruct
     public void init() {
         long now = System.currentTimeMillis();

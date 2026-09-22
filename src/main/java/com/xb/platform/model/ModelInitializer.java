@@ -6,12 +6,27 @@ import org.springframework.stereotype.Component;
 
 import java.util.Set;
 
+/**
+ * ModelInitializer - 模型初始化器
+ *
+ * 演示 AI 平台启动时如何预注册可用模型：包括 Chat 模型（DeepSeek、Qwen）
+ * 和 Embedding 模型（BGE）。每个模型携带端点、价格、上下文窗口等元信息，
+ * 供路由器和配额管理器使用。
+ *
+ * @author ibqy
+ */
 @Component
 public class ModelInitializer {
 
     @Autowired
     private ModelRegistry registry;
 
+    /**
+     * 启动时预注册所有可用模型到注册中心。
+     *
+     * <p>通过 @PostConstruct 在 Spring 容器就绪后自动执行，
+     * 确保后续请求到达时模型路由器已有可用候选。</p>
+     */
     @PostConstruct
     public void init() {
         ModelMeta deepseek = new ModelMeta(

@@ -22,6 +22,8 @@ import java.util.concurrent.ConcurrentHashMap;
  *     <li>工具沙箱：限制工具执行时间、资源访问范围</li>
  *     <li>工具版本管理：同一工具的多个版本共存，灰度切换</li>
  * </ul>
+ *
+ * @author ibqy
  */
 public class ToolRegistry {
 

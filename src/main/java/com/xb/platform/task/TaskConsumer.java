@@ -7,6 +7,15 @@ import org.springframework.stereotype.Component;
 
 import java.util.Random;
 
+/**
+ * TaskConsumer - 异步任务消费者
+ *
+ * 演示生产者-消费者模式中的消费者角色：使用虚拟线程轮询任务队列，
+ * 模拟任务处理过程并更新进度。处理失败时根据重试策略决定是否
+ * 重新入队（RETRYING）或标记为死信（DEAD），实现优雅的错误恢复。
+ *
+ * @author ibqy
+ */
 @Component
 public class TaskConsumer {
 
@@ -37,6 +46,7 @@ public class TaskConsumer {
         });
     }
 
+    // 处理单个任务：更新进度 → 模拟执行 → 成功/失败 → 重试或标记死信
     private void process(AsyncTask task) {
         task.setStatus(TaskStatus.PROCESSING);
         task.setProgress(10);

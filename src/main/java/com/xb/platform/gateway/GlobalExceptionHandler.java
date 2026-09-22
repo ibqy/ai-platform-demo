@@ -30,6 +30,8 @@ import java.util.UUID;
  *     <li>参数校验异常提取字段名 + 默认消息，前端可直接展示</li>
  *     <li>未知异常返回 500 + 通用消息，不泄露堆栈信息</li>
  * </ul>
+ *
+ * @author ibqy
  */
 @RestControllerAdvice
 public class GlobalExceptionHandler {
@@ -46,6 +48,11 @@ public class GlobalExceptionHandler {
             "prompt_render_error", HttpStatus.BAD_REQUEST
     );
 
+    /**
+     * 处理网关业务异常，按错误码映射 HTTP 状态码
+     * @param e 网关异常
+     * @return 带错误码、correlationId 的统一错误响应
+     */
     @ExceptionHandler(GatewayException.class)
     public ResponseEntity<Map<String, Object>> handleGatewayException(GatewayException e) {
         Map<String, Object> body = buildErrorBody(
@@ -56,6 +63,11 @@ public class GlobalExceptionHandler {
         return ResponseEntity.status(e.getStatusCode()).body(body);
     }
 
+    /**
+     * 处理 Jakarta Bean Validation 校验失败，返回字段级错误详情
+     * @param e 校验异常
+     * @return 400 响应，包含各字段的具体错误信息
+     */
     @ExceptionHandler(MethodArgumentNotValidException.class)
     public ResponseEntity<Map<String, Object>> handleValidation(MethodArgumentNotValidException e) {
         Map<String, String> fieldErrors = new LinkedHashMap<>();
@@ -67,6 +79,11 @@ public class GlobalExceptionHandler {
         return ResponseEntity.badRequest().body(body);
     }
 
+    /**
+     * 兜底处理所有未捕获异常，返回 500 且不泄露堆栈
+     * @param e 未知异常
+     * @return 500 通用错误响应
+     */
     @ExceptionHandler(Exception.class)
     public ResponseEntity<Map<String, Object>> handleUnknown(Exception e) {
         Map<String, Object> body = buildErrorBody("internal_error", "服务内部错误", HttpStatus.INTERNAL_SERVER_ERROR);
