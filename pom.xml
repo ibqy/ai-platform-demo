@@ -50,11 +50,15 @@
             <groupId>org.springframework.kafka</groupId>
             <artifactId>spring-kafka</artifactId>
         </dependency>
-        <dependency>
-            <groupId>io.github.resilience4j</groupId>
-            <artifactId>resilience4j-spring-boot3</artifactId>
-            <version>2.4.0</version>
-        </dependency>
+        <!--
+          Resilience4j 已移除（2026-10-16）：
+          原依赖 resilience4j-spring-boot3 2.4.0，但源码零处使用其 API
+          （限流是 GatewayRateLimiter 的 AtomicInteger 手写实现），
+          且该模块的 SpringBoot3Verifier 自动配置只兼容 Spring Boot 3.x——
+          Boot 4.x 下应用直接 FAILED TO START（单测全绿也发现不了，因为没有上下文加载测试）。
+          教训：① 没用的依赖要删，它照样能炸掉你的应用；② 升级 Boot 大版本必须启动一次。
+          需要熔断/限流时可按需引入并验证 Boot 4 兼容性。
+        -->
         <dependency>
             <groupId>io.micrometer</groupId>
             <artifactId>micrometer-tracing-bridge-otel</artifactId>

@@ -1,5 +1,7 @@
 package com.xb.platform.model;
 
+import org.springframework.stereotype.Component;
+
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.ConcurrentHashMap;
@@ -13,8 +15,17 @@ import java.util.stream.Collectors;
  * 按类型查询、健康状态标记等操作。使用 ReentrantReadWriteLock
  * 保证读写并发安全——读多写少场景下读写锁比 synchronized 更高效。
  *
+ * <p><b>踩坑记录（2026-10-16）</b>：这个类早期漏了 {@code @Component}，
+ * 而 {@code AiGatewayService} 的构造器注入了它——结果是
+ * "64 个单测全绿，应用一启动就 FAILED TO START"。
+ * 单测之所以没抓到：测试里是 {@code new ModelRegistry()} 直接构造的，
+ * 绕过了 Spring 装配。<b>装配错误只有启动应用或写上下文加载测试才能发现</b>，
+ * 同目录的 ModelInitializer / ModelQuota / ModelHealthChecker 都有注解，
+ * 就它漏了——这种"同类里只有一个漏"的疏漏最难靠肉眼发现。</p>
+ *
  * @author ibqy
  */
+@Component
 public class ModelRegistry {
 
     private final ConcurrentHashMap<String, ModelMeta> models = new ConcurrentHashMap<>();

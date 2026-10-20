@@ -1,5 +1,7 @@
 package com.xb.platform.model;
 
+import org.springframework.stereotype.Component;
+
 import java.util.List;
 import java.util.Map;
 
@@ -10,8 +12,15 @@ import java.util.Map;
  * 质量（QUALITY）三种策略选择最优模型。还提供 A/B 测试流量分割能力，
  * 可按租户哈希将流量分配到不同模型组，实现灰度发布。
  *
+ * <p><b>踩坑记录（2026-10-16）</b>：与 {@link ModelRegistry} 同样漏了 {@code @Component}，
+ * 而 {@code AiGatewayService} 构造器注入它——应用启动即失败。
+ * 两个"注册中心/路由器"类同时漏注解，说明这不是手滑而是<b>系统性疏漏</b>：
+ * 新增组件时没有"启动一次应用"的验证习惯。已补 {@code @SpringBootTest}
+ * 上下文加载测试（见 PlatformApplicationTests）兜住这类问题。</p>
+ *
  * @author ibqy
  */
+@Component
 public class ModelRouter {
 
     public enum RouterStrategy {

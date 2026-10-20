@@ -11,7 +11,7 @@
 | 组件 | 版本 | 用途 |
 |------|------|------|
 | Java | 21 | 基础语言（虚拟线程、record 等） |
-| Spring Boot | 4.1.0 | Web 框架 + 自动配置 |
+| Spring Boot | 4.1.1 | Web 框架 + 自动配置 |
 | Spring AI | 2.0.1 | OpenAI 兼容 LLM 调用（ChatClient） |
 | Redis | — | 多级缓存（LLM / Embedding / RAG） |
 | Kafka | — | 异步任务队列（文档解析、批量向量化） |
@@ -68,17 +68,27 @@ mvn spring-boot:run
 ### 测试
 
 ```bash
-curl -X POST http://localhost:8080/api/v1/chat \
+# 同步对话（真实端点：/api/ai/chat）
+curl -X POST http://localhost:8080/api/ai/chat \
   -H "Content-Type: application/json" \
   -d '{
-    "token": "demo-token",
+    "token": "sk-demo",
     "tenantId": "tenant-a",
     "query": "什么是 RAG？",
     "modelId": "gpt-4o-mini"
   }'
+
+# SSE 流式对话（逐 Token 推送）
+curl -N -X POST http://localhost:8080/api/ai/chat/stream \
+  -H "Content-Type: application/json" \
+  -d '{"token": "sk-demo", "tenantId": "tenant-a", "query": "什么是 RAG？"}'
+
+# 健康检查
+curl http://localhost:8080/api/ai/health
 ```
 
-> 当前项目为教学 Demo，认证 token 使用占位值即可通过。
+> 当前项目为教学 Demo，token 使用 `sk-` 前缀的占位值（如 `sk-demo`）即可通过
+> `GatewayAuthFilter` 的前缀校验（见 07-安全层），租户 ID 由 token 前缀派生。
 
 ---
 
@@ -93,19 +103,19 @@ curl -X POST http://localhost:8080/api/v1/chat \
               ┌─────────────────────────┐
               │    AiGatewayService     │
               │  ┌───────────────────┐  │
-              │  │ 1. 限流            │  │  ← Resilience4j RateLimiter
+              │  │ 1. 限流            │  │  ← GatewayRateLimiter（全局+租户双层 AtomicInteger）
               │  │ 2. 租户配额        │  │  ← TenantQuotaManager
               │  │ 3. JWT 鉴权        │  │  ← GatewayAuthFilter
               │  │ 4. 注入检测        │  │  ← ContentSafetyFilter
               │  │ 5. PII 脱敏        │  │  ← PiiMasker
-              │  │ 6. 缓存查询        │  │  ← LlmCache (Redis)
-              │  │ 7. 模型路由        │  │  ← ModelRouter (COST/PERF/QUALITY)
-              │  │ 8. 白名单校验      │  │  ← Tenant.modelWhitelist
+              │  │ 6. 模型路由        │  │  ← ModelRouter（COST/PERF/QUALITY）
+              │  │ 7. 白名单校验      │  │  ← Tenant.modelWhitelist
+              │  │ 8. 缓存查询        │  │  ← LlmCache（键含路由后模型，防绕过权限）
               │  │ 9. TPM 配额        │  │  ← ModelQuota
               │  │ 10. Prompt 渲染    │  │  ← PromptRenderer
               │  │ 11. LLM 调用       │  │  ← ChatClient (Spring AI)
               │  │ 12. 输出过滤       │  │  ← ContentSafetyFilter
-              │  │ 13. 计量记账       │  │  ← TokenMeter
+              │  │ 13. 计量记账       │  │  ← TenantQuotaManager / TokenMeter
               │  │ 14. 回写缓存       │  │  ← LlmCache
               │  └───────────────────┘  │
               └─────────────────────────┘
@@ -117,6 +127,9 @@ curl -X POST http://localhost:8080/api/v1/chat \
 ```
 
 管道顺序从便宜到贵排列：被挡掉的请求不消耗任何模型调用费用。
+**路由（6）刻意排在缓存（8）之前**：缓存键必须用路由选出的模型，
+否则客户端传错模型名会把 A 模型的答案缓存到 B 模型名下；先路由再查缓存也保证
+鉴权/白名单不被缓存旁路。
 
 ---
 
@@ -136,9 +149,12 @@ curl -X POST http://localhost:8080/api/v1/chat \
 
 | 缓存层 | Key | TTL | 失效策略 |
 |--------|-----|-----|----------|
-| LLM 回答 | query + modelId + kbVersion | 300s | TTL + 知识库更新主动清除 |
+| LLM 回答 | tenantId + query + **路由后模型** + kbVersion（可空记 "none"） | 300s | TTL + 知识库更新主动清除 |
 | Embedding | text 原文 | 600s | TTL 自然过期 |
 | RAG 检索 | query + kbVersion | 300s | 知识库更新主动清除 |
+
+> 缓存键用**路由选出的模型**而非请求里传的 `modelId`：否则客户端传错模型名时，
+> A 模型的答案会被缓存到 B 模型名下（键与执行不一致）。
 
 ---
 
@@ -185,7 +201,7 @@ curl -X POST http://localhost:8080/api/v1/chat \
 - 多租户 ThreadLocal 隔离 + 配额管理
 - 模型路由（COST/PERFORMANCE/QUALITY）+ A/B 灰度分流
 - Token 计量与成本核算（租户×模型二维表）
-- 64 个单元测试（JUnit 5），覆盖核心逻辑
+- 65 个单元测试（JUnit 5），覆盖核心逻辑 + Spring 上下文加载
 
 ### 教学简化 ⚠️
 
@@ -206,12 +222,12 @@ curl -X POST http://localhost:8080/api/v1/chat \
 ## 测试
 
 ```bash
-mvn test    # 64 个单元测试，约 25 秒
+mvn test    # 65 个单元测试，约 25 秒
 ```
 
 | 测试类 | 数量 | 覆盖范围 |
 |--------|------|---------|
-| PlatformApplicationTests | 1 | 启动类冒烟测试 |
+| PlatformApplicationTests | 2 | **真实上下文加载**（Spring 装配冒烟）+ 核心 Bean 点名验证 |
 | PlatformCoreTest | 9 | 路由/健康探活/A-B 分流/配额/白名单/Prompt/PII/注入检测 |
 | CacheSystemTest | 8 | 三级缓存命中/隔离/TTL 过期/按 KB 失效 |
 | TaskStateMachineTest | 7 | 任务状态机/重试/DEAD/TaskStore CRUD |

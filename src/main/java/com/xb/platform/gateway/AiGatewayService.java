@@ -164,12 +164,19 @@ public class AiGatewayService {
         }
 
         // 8. 缓存查询（在鉴权与白名单之后，携带 tenantId 隔离租户）
-        if (request.modelId != null && request.kbVersion != null) {
-            String cached = cache.get(tenantId, maskedQuery, request.modelId, request.kbVersion);
-            if (cached != null) {
-                quotaManager.recordUsage(tenantId, 0, 0);
-                return AiGatewayResponse.ok(cached, request.modelId, 0, true);
-            }
+        //
+        // 踩坑记录（2026-10-16）：早期实现要求请求同时带 modelId + kbVersion 才走缓存，
+        // 且键用的是请求里的 modelId——两个问题：
+        // ① 普通问答请求不带 kbVersion，缓存永远命中不了（实测第二次相同请求 cacheHit=false）；
+        // ② 真正执行的是路由选出的 selectedModelId，客户端传错模型名时会把 A 模型的答案
+        //    缓存到 B 模型名下——键与执行不一致，属于缓存正确性问题。
+        // 现在：键统一用 selectedModelId；kbVersion 可空（纯问答记 "none"）。
+        String cacheModel = selectedModelId;
+        String cacheKb = request.kbVersion != null ? request.kbVersion : "none";
+        String cached = cache.get(tenantId, maskedQuery, cacheModel, cacheKb);
+        if (cached != null) {
+            quotaManager.recordUsage(tenantId, 0, 0);
+            return AiGatewayResponse.ok(cached, selectedModelId, 0, true);
         }
 
         // 9. 模型TPM
@@ -208,10 +215,8 @@ public class AiGatewayService {
         long outTokens = inTokens / 2;
         quotaManager.recordUsage(tenantId, (int) inTokens, (int) outTokens);
 
-        // 14. 回写缓存
-        if (request.modelId != null && request.kbVersion != null) {
-            cache.put(tenantId, maskedQuery, request.modelId, request.kbVersion, result);
-        }
+        // 14. 回写缓存（键与第 8 步查询保持一致：selectedModelId + kbVersion-or-"none"）
+        cache.put(tenantId, maskedQuery, cacheModel, cacheKb, result);
 
         return AiGatewayResponse.ok(result, selectedModelId, inTokens + outTokens, false);
     }
