@@ -118,4 +118,4 @@ if (hash < 90) {
 5. **Prompt 渲染为什么放在管道靠后？**
  鉴权、限流、安全检查先拦截无效请求，避免浪费渲染计算。
 
-代码位置: `src/main/java/com/xb/platform/prompt/`
+代码位置：[PromptTemplate](../src/main/java/com/xb/platform/prompt/PromptTemplate.java) / [PromptTemplateStore](../src/main/java/com/xb/platform/prompt/PromptTemplateStore.java) / [PromptRenderer](../src/main/java/com/xb/platform/prompt/PromptRenderer.java) / [PromptInitializer](../src/main/java/com/xb/platform/prompt/PromptInitializer.java)

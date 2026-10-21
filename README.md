@@ -1,3 +1,17 @@
+<p align="center">
+  <a href="https://ibqy.github.io/ai-platform-demo/"><img src="https://img.shields.io/badge/在线课件-2F6FEB?style=flat-square" alt="在线课件"></a>
+  <img src="https://img.shields.io/badge/Java-21-2266EE?style=flat-square" alt="Java 21">
+  <img src="https://img.shields.io/badge/Spring_Boot-4.1.1-6DB33F?style=flat-square" alt="Spring Boot 4.1.1">
+  <img src="https://img.shields.io/badge/AI_网关-14_步管道-8957E5?style=flat-square" alt="14 步网关管道">
+  <img src="https://img.shields.io/github/license/ibqy/ai-platform-demo?style=flat-square" alt="License">
+  <img src="https://img.shields.io/github/stars/ibqy/ai-platform-demo?style=flat-square" alt="Stars">
+</p>
+
+> **课程位置** 阶段 4 · 生产级 AI 工程 — 第 2 站（路线终点）
+> [上一站 RAG 高阶](https://ibqy.github.io/rag-hybrid-search-demo/) → **企业级 AI 平台** → 🏁 完成全线 ｜ [完整学习路线](https://ibqy.github.io/curriculum)
+
+---
+
 # AI Platform Demo
 
 > 企业 AI 能力中台学习总结项目 · 作者：xb · 日期：2026-09
